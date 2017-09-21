@@ -1,4 +1,4 @@
-pragma solidity 4.0.10;
+pragma solidity 0.4.10;
 
 /**
  * @title SafeMath
