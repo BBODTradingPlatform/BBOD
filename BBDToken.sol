@@ -231,7 +231,7 @@ contract BBDToken is StandardToken, Ownable {
     address public exchangeAddress;
 
     // Team accounts
-    address public constant mainAccount = 0x87a9131485cf8ed8E9bD834b46A12D7f3092c263;
+    address public constant mainAccount = 0xEB1D40f6DA0E77E2cA046325F6F2a76081B4c7f4;
     address public constant coreTeamMemberOne = 0xe43088E823eA7422D77E32a195267aE9779A8B07;
     address public constant coreTeamMemberTwo = 0xBb2c56bc33E7677dC315ee4e37eb8A5723decBd3;
 
