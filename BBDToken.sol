@@ -198,27 +198,27 @@ contract BBDToken is StandardToken, Ownable {
     string public constant name = "BlockChain Board Of Derivatives Token";
     string public constant symbol = "BBD";
     uint256 public constant decimals = 18;
-    string public constant version = '1.0.0';
+    string private constant version = '1.0.0';
 
     // Crowdsale parameters
-    uint256 public constant startTime = 1506537900; //Sunday, 1 October 2017 08:00:00 GMT
-    uint256 public constant endTime = 1506797100;  // Wednesday, 1 November 2017 08:00:00 GMT
+    uint256 public constant startTime = 1506844800; //Sunday, 1 October 2017 08:00:00 GMT
+    uint256 public constant endTime = 1509523200;  // Wednesday, 1 November 2017 08:00:00 GMT
 
-    uint256 public constant creationCap = 300000000 * 10 ** decimals;
-    uint256 public constant creationMin = 2500000 * 10 ** decimals;
+    uint256 public constant creationMaxCap = 300000000 * 10 ** decimals;
+    uint256 public constant creationMinCap = 2500000 * 10 ** decimals;
 
-    uint256 public constant startCreationRateOnTime = 1666; // 1666 BDD per 1 ETH
-    uint256 public constant endCreationRateOnTime = 1000; // 1000 BDD per 1 ETH
+    uint256 private constant startCreationRateOnTime = 1666; // 1666 BDD per 1 ETH
+    uint256 private constant endCreationRateOnTime = 1000; // 1000 BDD per 1 ETH
 
-    uint256 public constant quantityThreshold_10 = 10 ether;
-    uint256 public constant quantityThreshold_30 = 30 ether;
-    uint256 public constant quantityThreshold_100 = 100 ether;
-    uint256 public constant quantityThreshold_300 = 300 ether;
+    uint256 private constant quantityThreshold_10 = 10 ether;
+    uint256 private constant quantityThreshold_30 = 30 ether;
+    uint256 private constant quantityThreshold_100 = 100 ether;
+    uint256 private constant quantityThreshold_300 = 300 ether;
 
-    uint256 public constant quantityBonus_10 = 500;    // 5%
-    uint256 public constant quantityBonus_30 = 1000;  // 10%
-    uint256 public constant quantityBonus_100 = 1500; // 15%
-    uint256 public constant quantityBonus_300 = 2000; // 20%
+    uint256 private constant quantityBonus_10 = 500;    // 5%
+    uint256 private constant quantityBonus_30 = 1000;  // 10%
+    uint256 private constant quantityBonus_100 = 1500; // 15%
+    uint256 private constant quantityBonus_300 = 2000; // 20%
 
     // The flag indicates if the crowdsale was finalized
     bool public finalized = false;
@@ -231,9 +231,9 @@ contract BBDToken is StandardToken, Ownable {
     address public exchangeAddress;
 
     // Team accounts
-    address public constant mainAccount = 0xEB1D40f6DA0E77E2cA046325F6F2a76081B4c7f4;
-    address public constant coreTeamMemberOne = 0xe43088E823eA7422D77E32a195267aE9779A8B07;
-    address public constant coreTeamMemberTwo = 0xBb2c56bc33E7677dC315ee4e37eb8A5723decBd3;
+    address private constant mainAccount = 0xEB1D40f6DA0E77E2cA046325F6F2a76081B4c7f4;
+    address private constant coreTeamMemberOne = 0xe43088E823eA7422D77E32a195267aE9779A8B07;
+    address private constant coreTeamMemberTwo = 0xad00884d1E7D0354d16fa8Ab083208c2cC3Ed515;
 
     // Ether raised
     uint256 private raised = 0;
@@ -250,8 +250,8 @@ contract BBDToken is StandardToken, Ownable {
     event LogBuy(address indexed _purchaser, address indexed _beneficiary, uint256 _value, uint256 _amount);
 
     // Check if min cap was archived.
-    modifier onlyWhenICOReachedCreationMin() {
-        require( totalSupply >= creationMin );
+    modifier onlyWhenICOReachedCreationMinCap() {
+        require( totalSupply >= creationMinCap );
         _;
     }
 
@@ -275,8 +275,8 @@ contract BBDToken is StandardToken, Ownable {
         return currentPrice;
     }
 
-    //Calculate number of BBD tokens for number of ether
-    function calculateBDD(uint256 _ethVal) public constant returns (uint256) {
+    //Calculate number of BBD tokens for provided ether
+    function calculateBDD(uint256 _ethVal) private constant returns (uint256) {
         uint256 bonus;
 
         //We provide bonus depending on eth value
@@ -295,7 +295,7 @@ contract BBDToken is StandardToken, Ownable {
         else {
             bonus = quantityBonus_300; // 20% bonus
         }
-        
+
         // Get number of BBD tokens
         return _ethVal.mul(creationRateOnTime()).mul(divisor.add(bonus)).div(divisor);
     }
@@ -311,15 +311,16 @@ contract BBDToken is StandardToken, Ownable {
         uint256 additionalBBDTokensForMainAccount = bbdTokens.mul(2250).div(divisor); // 22.5%
         uint256 additionalBBDTokensForCoreTeamMember = bbdTokens.mul(125).div(divisor); // 1.25%
 
-        //Increase by 25% number of bbd tokens on each buy.  
+        //Increase by 25% number of bbd tokens on each buy.
         uint256 checkedSupply = totalSupply.add(bbdTokens)
                                            .add(additionalBBDTokensForMainAccount)
                                            .add(2 * additionalBBDTokensForCoreTeamMember);
 
-        require(creationCap >= checkedSupply);
+        require(creationMaxCap >= checkedSupply);
 
         totalSupply = checkedSupply;
 
+        //Update balances
         balances[_beneficiary] = balances[_beneficiary].add(bbdTokens);
         balances[mainAccount] = balances[mainAccount].add(additionalBBDTokensForMainAccount);
         balances[coreTeamMemberOne] = balances[coreTeamMemberOne].add(additionalBBDTokensForCoreTeamMember);
@@ -329,8 +330,8 @@ contract BBDToken is StandardToken, Ownable {
 
         raised += msg.value;
 
-        if (exchangeAddress != 0x0 && totalSupply >= creationMin && msg.value >= 1 ether) {
-            // After archiving min cap we start moving 10% to exchange. It will help to archive liquidity on exchange.
+        if (exchangeAddress != 0x0 && totalSupply >= creationMinCap && msg.value >= 1 ether) {
+            // After archiving min cap we start moving 10% to exchange. It will help with liquidity on exchange.
             exchangeAddress.transfer(msg.value.mul(1000).div(divisor)); // 10%
         }
 
@@ -340,7 +341,7 @@ contract BBDToken is StandardToken, Ownable {
     // Finalize for successful ICO
     function finalize() onlyOwner external {
         require(!finalized);
-        require(now >= endTime || totalSupply >= creationCap);
+        require(now >= endTime || totalSupply >= creationMaxCap);
 
         finalized = true;
 
@@ -354,7 +355,7 @@ contract BBDToken is StandardToken, Ownable {
     // Refund if ICO won't reach min cap
     function refund() external {
         require(now > endTime);
-        require(totalSupply < creationMin);
+        require(totalSupply < creationMinCap);
 
         uint256 bddVal = balances[msg.sender];
         require(bddVal > 0);
@@ -401,16 +402,16 @@ contract BBDToken is StandardToken, Ownable {
         exchangeAddress = _exchangeAddress;
     }
 
-    function transfer(address _to, uint _value) onlyWhenICOReachedCreationMin returns (bool) {
+    function transfer(address _to, uint _value) onlyWhenICOReachedCreationMinCap returns (bool) {
         return super.transfer(_to, _value);
     }
 
-    function transferFrom(address _from, address _to, uint _value) onlyWhenICOReachedCreationMin returns (bool) {
+    function transferFrom(address _from, address _to, uint _value) onlyWhenICOReachedCreationMinCap returns (bool) {
         return super.transferFrom(_from, _to, _value);
     }
 
-    // Transfer BBD to exchange. 
-    function transferToExchange(address _from, uint256 _value) onlyWhenICOReachedCreationMin returns (bool) {
+    // Transfer BBD to exchange.
+    function transferToExchange(address _from, uint256 _value) onlyWhenICOReachedCreationMinCap returns (bool) {
         require(msg.sender == exchangeAddress);
 
         balances[exchangeAddress] = balances[exchangeAddress].add(_value);
