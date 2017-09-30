@@ -89,7 +89,7 @@ contract BBDExchange is Ownable {
     uint256 public constant startTime = 1506844800; //Sunday, 1 October 2017 08:00:00 GMT
     uint256 public constant endTime = 1509523200;  // Wednesday, 1 November 2017 08:00:00 GMT
 
-    BBDToken private bddToken;
+    BBDToken private bbdToken;
 
     // Events
     event LogSell(address indexed _seller, uint256 _value, uint256 _amount);
@@ -97,63 +97,63 @@ contract BBDExchange is Ownable {
 
     // Check if min cap was archived.
     modifier onlyWhenICOReachedCreationMinCap() {
-        require(bddToken.totalSupply() >= bddToken.creationMinCap());
+        require(bbdToken.totalSupply() >= bbdToken.creationMinCap());
         _;
     }
-    
+
     function() payable {}
 
-    function Exchange(address bddTokenAddress) {
-        bddToken = BBDToken(bddTokenAddress);
+    function Exchange(address bbdTokenAddress) {
+        bbdToken = BBDToken(bbdTokenAddress);
     }
 
     // Current exchange rate for BBD
     function exchangeRate() constant returns (uint256){
-        return bddToken.creationRateOnTime().mul(93).div(100); // 93% of price on current contract sale
+        return bbdToken.creationRateOnTime().mul(93).div(100); // 93% of price on current contract sale
     }
 
     // Number of BBD tokens on exchange
-    function exchangeBDDBalance() constant returns (uint256){
-        return bddToken.balanceOf(this);
+    function exchangeBBDBalance() constant returns (uint256){
+        return bbdToken.balanceOf(this);
     }
 
     // Max number of BBD tokens on exchange to sell
-    function maxSell() constant returns (uint256 bddValue) {
-        bddValue = this.balance.mul(exchangeRate());
+    function maxSell() constant returns (uint256 valueBbd) {
+        valueBbd = this.balance.mul(exchangeRate());
     }
 
     // Max value of wei for buy on exchange
-    function maxBuy() constant returns (uint256 valueInWei) {
-        valueInWei = exchangeBDDBalance().div(exchangeRate());
+    function maxBuy() constant returns (uint256 valueInEthWei) {
+        valueInEthWei = exchangeBBDBalance().div(exchangeRate());
     }
 
     // Check if sell is possible
-    function checkSell(uint256 _bddValue) constant returns (bool isPossible, uint256 valueInWei) {
-        valueInWei = _bddValue.div(exchangeRate());
-        isPossible = this.balance >= valueInWei ? true : false;
+    function checkSell(uint256 _valueBbd) constant returns (bool isPossible, uint256 valueInEthWei) {
+        valueInEthWei = _valueBbd.div(exchangeRate());
+        isPossible = this.balance >= valueInEthWei ? true : false;
     }
 
     // Check if buy is possible
-    function checkBuy(uint256 _valueInWei) constant returns (bool isPossible, uint256 bddValue) {
-        bddValue = _valueInWei.mul(exchangeRate());
-        isPossible = exchangeBDDBalance() >= bddValue ? true : false;
+    function checkBuy(uint256 _valueInEthWei) constant returns (bool isPossible, uint256 valueBbd) {
+        valueBbd = _valueInEthWei.mul(exchangeRate());
+        isPossible = exchangeBBDBalance() >= valueBbd ? true : false;
     }
 
     // Sell BBD
-    function sell(uint256 _bddValue) onlyWhenICOReachedCreationMinCap external {
-        require(_bddValue > 0);
+    function sell(uint256 _valueBbd) onlyWhenICOReachedCreationMinCap external {
+        require(_valueBbd > 0);
         require(now >= startTime);
         require(now <= endTime);
-        require(_bddValue <= bddToken.balanceOf(msg.sender));
+        require(_valueBbd <= bbdToken.balanceOf(msg.sender));
 
-        uint256 checkedEth = _bddValue.div(exchangeRate());
+        uint256 checkedEth = _valueBbd.div(exchangeRate());
         require(checkedEth <= this.balance);
 
         //Transfer BBD to exchange and ETH to user 
-        require(bddToken.transferToExchange(msg.sender, _bddValue));
+        require(bbdToken.transferToExchange(msg.sender, _valueBbd));
         msg.sender.transfer(checkedEth);
 
-        LogSell(msg.sender, checkedEth, _bddValue);
+        LogSell(msg.sender, checkedEth, _valueBbd);
     }
 
     // Buy BBD
@@ -162,13 +162,13 @@ contract BBDExchange is Ownable {
         require(now >= startTime);
         require(now <= endTime);
 
-        uint256 checkedBDDTokens = msg.value.mul(exchangeRate());
-        require(checkedBDDTokens <= exchangeBDDBalance());
+        uint256 checkedBBDTokens = msg.value.mul(exchangeRate());
+        require(checkedBBDTokens <= exchangeBBDBalance());
 
         //Transfer BBD to user. 
-        require(bddToken.transfer(msg.sender, checkedBDDTokens));
+        require(bbdToken.transfer(msg.sender, checkedBBDTokens));
 
-        LogBuy(msg.sender, msg.value, checkedBDDTokens);
+        LogBuy(msg.sender, msg.value, checkedBBDTokens);
     }
 
     // Close Exchange
@@ -176,7 +176,7 @@ contract BBDExchange is Ownable {
         require(now >= endTime);
 
         //Transfer BBD and ETH to owner
-        require(bddToken.transfer(owner, exchangeBDDBalance()));
+        require(bbdToken.transfer(owner, exchangeBBDBalance()));
         owner.transfer(this.balance);
     }
 }
