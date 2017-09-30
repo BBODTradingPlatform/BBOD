@@ -1,6 +1,5 @@
 pragma solidity ^0.4.13;
 
-
 /**
  * @title SafeMath
  * @dev Math operations with safety checks that throw on error
@@ -76,17 +75,19 @@ contract BBDToken {
     function transfer(address _to, uint256 _value) returns (bool);
 
     function creationRateOnTime() constant returns (uint256);
-    function creationMin() constant returns (uint256);
+    function creationMinCap() constant returns (uint256);
     function transferToExchange(address _from, uint256 _value) returns (bool);
     function buy(address _beneficiary) payable;
 }
 
-contract Exchange is Ownable {
+/**
+    Exchange for BlockChain Board Of Derivatives Token.
+ */
+contract BBDExchange is Ownable {
     using SafeMath for uint256;
 
-    uint256 public constant startTime = 1506624307; //Sunday, 1 October 2017 08:00:00 GMT
-    uint256 public constant endTime = 1506725107; // Wednesday, 1 November 2017 08:00:00 GMT
-    uint256 public constant decimals = 18;
+    uint256 public constant startTime = 1506844800; //Sunday, 1 October 2017 08:00:00 GMT
+    uint256 public constant endTime = 1509523200;  // Wednesday, 1 November 2017 08:00:00 GMT
 
     BBDToken private bddToken;
 
@@ -94,11 +95,12 @@ contract Exchange is Ownable {
     event LogSell(address indexed _seller, uint256 _value, uint256 _amount);
     event LogBuy(address indexed _purchaser, uint256 _value, uint256 _amount);
 
-    modifier onlyWhenICOReachedCreationMin() {
-        require(bddToken.totalSupply() >= bddToken.creationMin());
+    // Check if min cap was archived.
+    modifier onlyWhenICOReachedCreationMinCap() {
+        require(bddToken.totalSupply() >= bddToken.creationMinCap());
         _;
     }
-
+    
     function() payable {}
 
     function Exchange(address bddTokenAddress) {
@@ -107,7 +109,7 @@ contract Exchange is Ownable {
 
     // Current exchange rate for BBD
     function exchangeRate() constant returns (uint256){
-        return bddToken.creationRateOnTime().mul(93).div(100); // 93%
+        return bddToken.creationRateOnTime().mul(93).div(100); // 93% of price on current contract sale
     }
 
     // Number of BBD tokens on exchange
@@ -116,45 +118,47 @@ contract Exchange is Ownable {
     }
 
     // Max number of BBD tokens on exchange to sell
-    function maxSell() constant returns (uint256 maxBddVal) {
-        maxBddVal = this.balance.mul(exchangeRate());
+    function maxSell() constant returns (uint256 bddValue) {
+        bddValue = this.balance.mul(exchangeRate());
     }
 
     // Max value of wei for buy on exchange
-    function maxBuy() constant returns (uint256 maxEthVal) {
-        maxEthVal = exchangeBDDBalance().div(exchangeRate());
+    function maxBuy() constant returns (uint256 valueInWei) {
+        valueInWei = exchangeBDDBalance().div(exchangeRate());
     }
 
-    // Calculate sell value 
-    function calculateSell(uint256 _bddVal) constant returns (bool isPossible, uint256 weiVal) {
-        weiVal = _bddVal.mul(10 ** decimals).div(exchangeRate());
-        isPossible = this.balance >= weiVal ? true : false;
+    // Check if sell is possible
+    function checkSell(uint256 _bddValue) constant returns (bool isPossible, uint256 valueInWei) {
+        valueInWei = _bddValue.div(exchangeRate());
+        isPossible = this.balance >= valueInWei ? true : false;
     }
 
-    // Calculate buy value 
-    function calculateBuy(uint256 _weiVal) constant returns (bool isPossible, uint256 bddVal) {
-        bddVal = _weiVal.mul(exchangeRate()).div(10 ** decimals);
-        isPossible = exchangeBDDBalance() >= bddVal ? true : false;
+    // Check if buy is possible
+    function checkBuy(uint256 _valueInWei) constant returns (bool isPossible, uint256 bddValue) {
+        bddValue = _valueInWei.mul(exchangeRate());
+        isPossible = exchangeBDDBalance() >= bddValue ? true : false;
     }
 
     // Sell BBD
-    function sell(uint256 _bbdVal) onlyWhenICOReachedCreationMin external {
+    function sell(uint256 _bddValue) onlyWhenICOReachedCreationMinCap external {
+        require(_bddValue > 0);
         require(now >= startTime);
         require(now <= endTime);
-        require(_bbdVal <= bddToken.balanceOf(msg.sender));
+        require(_bddValue <= bddToken.balanceOf(msg.sender));
 
-        uint256 checkedEth = _bbdVal.div(exchangeRate());
+        uint256 checkedEth = _bddValue.div(exchangeRate());
         require(checkedEth <= this.balance);
 
         //Transfer BBD to exchange and ETH to user 
-        require(bddToken.transferToExchange(msg.sender, _bbdVal));
+        require(bddToken.transferToExchange(msg.sender, _bddValue));
         msg.sender.transfer(checkedEth);
 
-        LogSell(msg.sender, checkedEth, _bbdVal);
+        LogSell(msg.sender, checkedEth, _bddValue);
     }
 
     // Buy BBD
-    function buy() onlyWhenICOReachedCreationMin external payable {
+    function buy() onlyWhenICOReachedCreationMinCap payable external {
+        require(msg.value != 0);
         require(now >= startTime);
         require(now <= endTime);
 
@@ -167,9 +171,11 @@ contract Exchange is Ownable {
         LogBuy(msg.sender, msg.value, checkedBDDTokens);
     }
 
+    // Close Exchange
     function close() onlyOwner {
         require(now >= endTime);
 
+        //Transfer BBD and ETH to owner
         require(bddToken.transfer(owner, exchangeBDDBalance()));
         owner.transfer(this.balance);
     }
