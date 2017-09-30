@@ -109,7 +109,7 @@ contract BBDExchange is Ownable {
 
     // Current exchange rate for BBD
     function exchangeRate() constant returns (uint256){
-        return bbdToken.creationRateOnTime().mul(93).div(100); // 93% of price on current contract sale
+        return bbdToken.creationRateOnTime().mul(100).div(93); // 93% of price on current contract sale
     }
 
     // Number of BBD tokens on exchange
