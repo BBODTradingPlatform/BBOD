@@ -190,12 +190,12 @@ contract Ownable {
 
 }
 
-contract MigrationAgent2 {
-    function migrateFrom(address _from, uint256 _value) external;
+contract BBDMigration {
+    function migrateFrom(address _from) external;
 }
 
 /**
-    BlockChain Board Of Derivatives Token.
+    Blockchain Board Of Derivatives Token.
  */
 contract BBDToken is StandardToken, Ownable {
 
@@ -205,54 +205,41 @@ contract BBDToken is StandardToken, Ownable {
     uint256 public constant decimals = 18;
     string private constant version = '2.0.0';
     
-    
     //Migration information
     address public migrationAgent;
     uint256 public totalMigrated;
-    
     
     // Events
     event LogMigrate(address indexed _from, address indexed _to, uint256 _value);
 
     // Allow to migrate to next version of contract
-    function migrate(address _beneficiary, uint256 _value) onlyOwner external {
-        require(migrationAgent != address(0));
-        require(_value > 0);
-        require(_value <= balances[_beneficiary]);
+    function migrate(address _beneficiary) onlyOwner external {
+        require(migrationAgent != address(0x0));
+        require(balances[_beneficiary] > 0);
 
-        balances[msg.sender] = balances[_beneficiary].sub(_value);
-        totalSupply = totalSupply.sub(_value);
-        totalMigrated = totalMigrated.add(_value);
+        uint256 value = balances[_beneficiary];
+        balances[msg.sender] = 0;
+        totalSupply = totalSupply.sub(value);
+        totalMigrated = totalMigrated.add(value);
         
-        MigrationAgent2(migrationAgent).migrateFrom(_beneficiary, _value);
+        BBDMigration(migrationAgent).migrateFrom(_beneficiary);
         
-        LogMigrate(_beneficiary, migrationAgent, _value);
+        LogMigrate(_beneficiary, migrationAgent, value);
         
     }
     
     // Set migration Agent
     function setMigrationAgent(address _agent) onlyOwner external {
-        require(migrationAgent == address(0));
 
         migrationAgent = _agent;
     }
-
-   function transfer(address _to, uint _value) public returns (bool) {
-        return super.transfer(_to, _value);
-    }
-
-    function transferFrom(address _from, address _to, uint _value) public returns (bool) {
-        return super.transferFrom(_from, _to, _value);
-    }
-
 }
 
 contract MigrationAgent is BBDToken {
-
-    function migrateFrom(address _from, uint256 _value) external
-    {
+    function migrateFrom(address _from, uint256 _value) external {
+    
         require(msg.sender == address(0x5CA71Ea65ACB6293e71E62c41B720698b0Aa611C));
-        balances[_from] = balances[_from].add(_value * 100);
-        totalSupply = totalSupply.add(_value * 100);
+        balances[_from] = balances[_from].add(_value.mul(100));
+        totalSupply = totalSupply.add(_value.mul(100));
     }
 }
