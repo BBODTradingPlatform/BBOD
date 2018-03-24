@@ -191,7 +191,7 @@ contract Ownable {
 }
 
 contract BBDMigration {
-    function migrateFrom(address _from) external;
+    function migrateFrom(address _from, uint256 _value) external;
 }
 
 /**
@@ -222,7 +222,7 @@ contract BBDToken is StandardToken, Ownable {
         totalSupply = totalSupply.sub(value);
         totalMigrated = totalMigrated.add(value);
         
-        BBDMigration(migrationAgent).migrateFrom(_beneficiary);
+        BBDMigration(migrationAgent).migrateFrom(_beneficiary, value);
         
         LogMigrate(_beneficiary, migrationAgent, value);
         
