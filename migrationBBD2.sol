@@ -233,14 +233,7 @@ contract BBDToken is StandardToken, Ownable {
 
         migrationAgent = _agent;
     }
-    
-    function transfer(address _to, uint _value) public returns (bool) {
-        return super.transfer(_to, _value);
-    }
-
-    function transferFrom(address _from, address _to, uint _value) public returns (bool) {
-        return super.transferFrom(_from, _to, _value);
-    }
+   
 }
 
 contract MigrationAgent is BBDToken {
